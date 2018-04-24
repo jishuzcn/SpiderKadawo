@@ -13,6 +13,7 @@ class LoginFulei(object):
     _url = r"http://www.kadawo.com/fulei/index.php/common/doLogin/company/"
     _loginUrl = r"http://www.kadawo.com/fulei/index.php/common/login/company/"
     _indexUrl = r"http://www.kadawo.com/fulei/index.php/index/index"
+    #得到唯一的对话实例
     session = requests.Session()
 
     '''
