@@ -28,46 +28,60 @@ class SpiderIndex(object):
 
     def __init__(self):
         global htm,soup
-        htm = self.getHtml()
+        htm = self.getHtml() # 默认得到彩票机首页信息
         # 因为只是获取数据，不是修改，可以用一个BeautifulSoup实例
         soup = BeautifulSoup(htm, "lxml")
         if not SpiderIndex.login.isLogin():
             SpiderIndex.login.doLogin()
 
-    def getHtml(self):
+    '''
+    得到某一页的Html信息
+    '''
+    def getHtml(self,url = None):
         header = SpiderIndex.flheader.getshjList()
         header.setdefault('Cookie','PHPSESSID=%s' % SpiderIndex.login.getCookie())
-        htm = self.session.get(r"http://www.kadawo.com/fulei/index.php/equipment/shjList",headers = header,allow_redirects=False)
+        if url == None:
+            htm = self.session.get(r"http://www.kadawo.com/fulei/index.php/equipment/shjList", headers=header,
+                                   allow_redirects=False)
+        else:
+            htm = self.session.get(url,headers=header,allow_redirects=False)
         return htm.text
 
-    def writeContent(self):
-        global soup
-        table = soup.find("table")
-        with open(r"/fuleiContent.txt", 'ab') as f:
-            for tr in table.findAll('tr'):
-                for th in tr.findAll('th'):
-                    with open(r"/fuleiContent.txt", 'ab') as fth:
-                        fth.write(th.getText().encode('utf-8'))
-                        fth.write("\n".encode('utf-8'))
-                for td in tr.findAll('td'):
-                    with open(r"/fuleiContent.txt", 'ab') as ftd:
-                        ftd.write(td.getText().encode('utf-8'))
-                        ftd.write("\n".encode('utf-8'))
+    # def writeContent(self):
+    #     global soup
+    #     table = soup.find("table")
+    #     with open(r"/fuleiContent.txt", 'ab') as f:
+    #         for tr in table.findAll('tr'):
+    #             for th in tr.findAll('th'):
+    #                 with open(r"/fuleiContent.txt", 'ab') as fth:
+    #                     fth.write(th.getText().encode('utf-8'))
+    #                     fth.write("\n".encode('utf-8'))
+    #             for td in tr.findAll('td'):
+    #                 with open(r"/fuleiContent.txt", 'ab') as ftd:
+    #                     ftd.write(td.getText().encode('utf-8'))
+    #                     ftd.write("\n".encode('utf-8'))
 
-    def getNextPage(self):
+    def getNextPage(self,htm = None):
         next_page_pattern = re.compile(r"<a href='(.*?)'>下一页</a>")
-        next_page_tag = re.findall(next_page_pattern,self.getHtml())
+        if htm:
+            next_page_tag = re.findall(next_page_pattern,htm)
+        else:
+            next_page_tag = re.findall(next_page_pattern, self.getHtml())
         next_url = "http://www.kadawo.com%s" % next_page_tag[0]
         return next_url
 
     '''
-     得到首页数据
+     得到某一页的数据
      序号(nid)2 设备ID(eid)3 设备名称(ename)4 设备地址(eaddress)5 持有人(holder)8
      所属(bto)9 合计次数(ttimes) 合计金额(tmoney) 库存(stock)12 运行状态(status)13
     @return d = [{'nid':'01','eid':'868201049..',...},{....}]
+    @htm  HTML内容
     '''
-    def getIndexData(self):
-        global soup
+    def getIndexData(self,htm = None):
+        if htm:
+            global soup
+        else:
+            soup = BeautifulSoup(htm, "lxml")
         data = []
         tbody = soup.find("tbody")
         rows = tbody.findAll('tr')
@@ -89,11 +103,62 @@ class SpiderIndex(object):
                 da.setdefault("tmoney",ttmoney[1])
                 da.setdefault("stock",cols[11].text.strip())
                 da.setdefault("status",cols[12].text.strip())
-                print(da)
                 data.append(da)
-        print(data)
+        return data
+
+    '''
+    得到所有商户或者经销商,默认为商户
+    '''
+    def getAllHolderOrDealer(self,HolderFlag = True):
+        #这里只获取彩票机首页的html信息
+        global soup
+        if HolderFlag:
+            select = soup.find(id='holderId')
+        else:
+            select = soup.find(id='dealerId')
+        option = select.findAll("option")
+        data = {}
+        for o in option:
+            if HolderFlag:
+                if not o.text == '商户选择':
+                    data.setdefault(o.attrs['value'], o.text)
+            else:
+                if not o.text == '经销商选择':
+                    data.setdefault(o.attrs['value'], o.text)
+        return data
+
+    '''
+    按照参数获取到彩票机的所有数据
+    @parameter devicesId => 设备id
+    @parameter equipmentName => 设备名称
+    @parameter startTime => 开始时间
+    @parameter endTime => 结束时间
+    @parameter id => 设备序号
+    @parameter network => 在线状态
+    @parameter goodsState => 机头状态
+    @parameter isOff => 运行状态
+    @parameter holderId => 商户选择
+    @parameter dealerId => 经销商选择
+    @parameter __hash__ => hash值
+    '''
+    def getAllDataByPar(self):
+        pass
+
+
+    '''
+    得到某个时间段的所有彩票机数据
+    Time = yyyy-mm-dd
+    '''
+    def getAllDataByTime(self,startTime,endTime):
+        url = r'http://www.kadawo.com/fulei/index.php/equipment/shjList/startTime/%s' % startTime+\
+              '/endTime/%s' % endTime+'/__hash__/%s' % SpiderIndex.fltool.getHash(self.getHtml())+'/'
+        header = SpiderIndex.flheader.getShjByDate()
+        header.setdefault("Cookie",'PHPSESSID=%s' % SpiderIndex.login.getCookie())
+        htm = self.session.get(url=url, headers=header,
+                               allow_redirects=False)
+        print(htm.text)
 
 if __name__ == '__main__':
     spiner = SpiderIndex()
     # spiner.getHtml()
-    spiner.getIndexData()
+    spiner.getAllDataByTime('2018-3-12','2018-4-1')
