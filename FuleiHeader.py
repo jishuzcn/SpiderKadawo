@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 '''
 Request Header TOOL - write by 汪思源
+目的：完全模拟浏览器发送请求
 '''
 class FuleiHeader(object):
     '''
@@ -98,5 +99,26 @@ class FuleiHeader(object):
                   'Referer': 'http://www.kadawo.com/fulei/index.php/index/amTable',
                   'Accept-Encoding': 'gzip, deflate',
                   'Accept-Language': 'zh-CN,zh;q=0.9'
+                  }
+        return header
+
+    '''
+    POST http://www.kadawo.com/fulei/index.php/equipment/hjslAjax  HTTP/1.1
+    缺少Cookie值
+    '''
+    @staticmethod
+    def postHjsl():
+        header = {'Host': 'www.kadawo.com',
+                  'Proxy-Connection': 'keep-alive',
+                  'Upgrade-Insecure-Requests': '1',
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                                'Chrome/66.0.3359.117 Safari/537.36',
+                  'Accept': 'application/json, text/javascript, */*; q=0.01',
+                  'Referer': 'http://www.kadawo.com/fulei/index.php/equipment/shjList',
+                  'Accept-Encoding': 'gzip, deflate',
+                  'Accept-Language': 'zh-CN,zh;q=0.9',
+                  'X-Requested-With':'XMLHttpRequest',
+                  'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                  'Origin':'http://www.kadawo.com',
                   }
         return header

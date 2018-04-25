@@ -1,9 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import requests
-import re
 import os
-from FuleiHeader import *
+import FuleiHeader
+import FuleiTool
 
 __Author__ = '汪思源'
 __Vision__ = 0.1
@@ -13,26 +13,17 @@ class LoginFulei(object):
     _url = r"http://www.kadawo.com/fulei/index.php/common/doLogin/company/"
     _loginUrl = r"http://www.kadawo.com/fulei/index.php/common/login/company/"
     _indexUrl = r"http://www.kadawo.com/fulei/index.php/index/index"
-    #得到唯一的对话实例
+    # 得到唯一的对话实例
     session = requests.Session()
+    flheader = FuleiHeader.FuleiHeader()
+    fltool = FuleiTool.FuleiTool()
 
-    '''
-    得到input中的hash值，然后与用户名密码一起提交
-    GET http://www.kadawo.com/fulei/index.php/common/login/company HTTP/1.1
-    '''
-    def getHash(self):
-        header = FuleiHeader.getLogin()
-        header.setdefault('Cookie', 'PHPSESSID=%s' % self.getCookie())
-        response = LoginFulei.session.get(url=self._loginUrl, headers=header)
-        html = response.text
-        get_hash_pattern = re.compile(r'<input type="hidden" name="__hash__" value="(.*?)"')
-        _hash = re.findall(get_hash_pattern, html)[0]
-        return _hash
-        # soup = BeautifulSoup(res.text, "html.parser")
-        # content = soup.findAll(attrs={"name": "__hash__"})
-        # strContent = str(content)
-        # getData = re.search(r'value="[0-9a-zA-Z]{32}"', strContent).group()
-        # return getData[7:39]
+    def __init__(self):
+        # 如果未登录就删除Cookie，否则带过期的Cookie会导致无法登陆，次数多服务器限制ip
+        if not self.isLogin():
+            if os.path.exists(r"//fuleiCookie.txt"):
+                os.remove(r"//fuleiCookie.txt")
+
 
     def getCookie(self):
         if not os.path.exists(r"/fuleiCookie.txt"):
@@ -62,30 +53,35 @@ class LoginFulei(object):
     def doLogin(self):
         username = 'fulei'
         password = 'bdxl88888*'
-        postUrl = "userName="+username+"&password="+password+"&verify="+"&__hash__="+self.getHash()
-        header = FuleiHeader.postDoLogin()
+        header = LoginFulei.flheader.getLogin()
         header.setdefault('Cookie', 'PHPSESSID=%s' % self.getCookie())
-        result = LoginFulei.session.post(self._url,data=postUrl,headers=header)
+        response = LoginFulei.session.get(url=self._loginUrl, headers=header)
+        _hash = LoginFulei.fltool.getHash(response.text)
 
-        # header2 = FuleiHeader.getIndex()
-        # header2.setdefault('Cookie', 'PHPSESSID=%s' % self.getCookie())
-        # req = LoginFulei.session.get(url=self._indexUrl, headers=header2,
-        #                     allow_redirects=False)
-        # print(req.text)
+        postData = "userName="+username+"&password="+password+"&verify="+"&__hash__="+_hash
+        header = LoginFulei.flheader.postDoLogin()
+        header.setdefault('Cookie', 'PHPSESSID=%s' % self.getCookie())
+        result = LoginFulei.session.post(self._url,data=postData,headers=header)
+        print(result.text)
 
     '''
     POST http://www.kadawo.com/fulei/index.php/common/checkIsLoginAjax HTTP/1.1
     '''
     def isLogin(self):
         url = "http://www.kadawo.com/fulei/index.php/common/checkIsLoginAjax"
-        header = FuleiHeader.postCheckLogin()
+        header = LoginFulei.flheader.postCheckLogin()
         header.setdefault('Cookie', 'PHPSESSID=%s' % self.getCookie())
         login_code = LoginFulei.session.post(url, data="userId=2",headers=header).content
         if login_code == b'Y':
             return True
-
         else:
             return False
+    '''
+    1.得到userId
+    2.判断权限
+    '''
+    def check_id(self):
+        pass
 
 # if __name__ == '__main__':
 #     fulei = LoginFulei()
