@@ -40,11 +40,11 @@ class SpiderIndex(object):
     def getHtml(self,url = None):
         header = SpiderIndex.flheader.getshjList()
         header.setdefault('Cookie','PHPSESSID=%s' % SpiderIndex.login.getCookie())
-        if url == None:
+        if url:
+            htm = self.session.get(url,headers=header,allow_redirects=False)
+        else:
             htm = self.session.get(r"http://www.kadawo.com/fulei/index.php/equipment/shjList", headers=header,
                                    allow_redirects=False)
-        else:
-            htm = self.session.get(url,headers=header,allow_redirects=False)
         return htm.text
 
     # def writeContent(self):
@@ -64,9 +64,9 @@ class SpiderIndex(object):
     def getNextPage(self,htm = None):
         next_page_pattern = re.compile(r"<a href='(.*?)'>下一页</a>")
         if htm:
-            next_page_tag = re.findall(next_page_pattern,htm)
-        else:
             next_page_tag = re.findall(next_page_pattern, self.getHtml())
+        else:
+            next_page_tag = re.findall(next_page_pattern,htm)
         next_url = "http://www.kadawo.com%s" % next_page_tag[0]
         return next_url
 
@@ -79,9 +79,9 @@ class SpiderIndex(object):
     '''
     def getIndexData(self,htm = None):
         if htm:
-            global soup
-        else:
             soup = BeautifulSoup(htm, "lxml")
+        else:
+            global soup
         data = []
         tbody = soup.find("tbody")
         rows = tbody.findAll('tr')
