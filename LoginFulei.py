@@ -21,9 +21,8 @@ class LoginFulei(object):
     def __init__(self):
         # 如果未登录就删除Cookie，否则带过期的Cookie会导致无法登陆，次数多服务器限制ip
         if not self.isLogin():
-            if os.path.exists(r"//fuleiCookie.txt"):
-                os.remove(r"//fuleiCookie.txt")
-
+            if os.path.exists(r"/fuleiCookie.txt"):
+                os.remove(r"/fuleiCookie.txt")
 
     def getCookie(self):
         if not os.path.exists(r"/fuleiCookie.txt"):

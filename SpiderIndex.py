@@ -16,6 +16,7 @@ import LoginFulei
 import FuleiHeader
 import re
 import FuleiTool
+import furl
 
 class SpiderIndex(object):
     # 唯一会话id
@@ -23,14 +24,11 @@ class SpiderIndex(object):
     flheader = FuleiHeader.FuleiHeader()
     fltool = FuleiTool.FuleiTool()
     session = login.session
-    soup = None
-    htm = None
 
     def __init__(self):
-        global htm,soup
-        htm = self.getHtml() # 默认得到彩票机首页信息
-        # 因为只是获取数据，不是修改，可以用一个BeautifulSoup实例
-        soup = BeautifulSoup(htm, "lxml")
+        # self.htm = self.getHtml() # 默认得到彩票机首页信息
+        # # 因为只是获取数据，不是修改，可以用一个BeautifulSoup实例
+        # self.soup = BeautifulSoup(htm, "lxml")
         if not SpiderIndex.login.isLogin():
             SpiderIndex.login.doLogin()
 
@@ -61,12 +59,9 @@ class SpiderIndex(object):
     #                     ftd.write(td.getText().encode('utf-8'))
     #                     ftd.write("\n".encode('utf-8'))
 
-    def getNextPage(self,htm = None):
+    def getNextPage(self,url = None):
         next_page_pattern = re.compile(r"<a href='(.*?)'>下一页</a>")
-        if htm:
-            next_page_tag = re.findall(next_page_pattern, self.getHtml())
-        else:
-            next_page_tag = re.findall(next_page_pattern,htm)
+        next_page_tag = re.findall(next_page_pattern,self.getHtml(url=url))
         next_url = "http://www.kadawo.com%s" % next_page_tag[0]
         return next_url
 
@@ -75,13 +70,14 @@ class SpiderIndex(object):
      序号(nid)2 设备ID(eid)3 设备名称(ename)4 设备地址(eaddress)5 持有人(holder)8
      所属(bto)9 合计次数(ttimes) 合计金额(tmoney) 库存(stock)12 运行状态(status)13
     @return d = [{'nid':'01','eid':'868201049..',...},{....}]
-    @htm  HTML内容
+    @:parameter startTime => TimeStamp
+    @:parameter endTime => TimeStamp
     '''
-    def getIndexData(self,htm = None):
-        if htm:
-            soup = BeautifulSoup(htm, "lxml")
-        else:
-            global soup
+    def getIndexData(self,soup,startTime = None,endTime = None):
+        if not startTime:
+            startTime = self.fltool.getStartTimeOfToday()
+        if not endTime:
+            endTime = self.fltool.getEndTimeOfToday()
         data = []
         tbody = soup.find("tbody")
         rows = tbody.findAll('tr')
@@ -98,7 +94,7 @@ class SpiderIndex(object):
                 da.setdefault("eaddress",cols[4].span.attrs['title'])
                 da.setdefault("holder",cols[7].text.strip())
                 da.setdefault("bto",cols[8].text.strip())
-                ttmoney = SpiderIndex.fltool.getMoney(cols[2].text.strip(),'1524585600','1524671999')#注意数值代表4月25日
+                ttmoney = self.getMoney(cols[2].text.strip(),startTime,endTime)
                 da.setdefault("ttimes",ttmoney[0])
                 da.setdefault("tmoney",ttmoney[1])
                 da.setdefault("stock",cols[11].text.strip())
@@ -111,7 +107,8 @@ class SpiderIndex(object):
     '''
     def getAllHolderOrDealer(self,HolderFlag = True):
         #这里只获取彩票机首页的html信息
-        global soup
+        htm = self.getHtml()
+        soup = BeautifulSoup(htm, "lxml")
         if HolderFlag:
             select = soup.find(id='holderId')
         else:
@@ -139,26 +136,69 @@ class SpiderIndex(object):
     @parameter isOff => 运行状态
     @parameter holderId => 商户选择
     @parameter dealerId => 经销商选择
-    @parameter __hash__ => hash值
-    '''
-    def getAllDataByPar(self):
-        pass
-
-
-    '''
-    得到某个时间段的所有彩票机数据
+    @parameter __hash__ => input.hash值
     Time = yyyy-mm-dd
     '''
-    def getAllDataByTime(self,startTime,endTime):
-        url = r'http://www.kadawo.com/fulei/index.php/equipment/shjList/startTime/%s' % startTime+\
-              '/endTime/%s' % endTime+'/__hash__/%s' % SpiderIndex.fltool.getHash(self.getHtml())+'/'
-        header = SpiderIndex.flheader.getShjByDate()
-        header.setdefault("Cookie",'PHPSESSID=%s' % SpiderIndex.login.getCookie())
-        htm = self.session.get(url=url, headers=header,
-                               allow_redirects=False)
-        print(htm.text)
+    def getAllDataByPar(self,**kwargs):
+        f = furl.furl('http://www.kadawo.com/fulei/index.php/equipment/shjList')
+        f.args = kwargs
+        f.args.setdefault('__hash__',SpiderIndex.fltool.getHash(self.getHtml()))
+        url = SpiderIndex.fltool.urlReplace(f.url)
+        htm = self.getHtml(url)
+        soup = BeautifulSoup(htm,"lxml")
+        data = self.getIndexData(soup, self.fltool.timeToTimestamp(kwargs['startTime']),
+                                 self.fltool.timeToTimestamp(kwargs['endTime']))
+        return data
+
+    '''
+    得到某个时间段单个机器的合计金额,合计次数
+    startTime与endTime是时间戳格式
+    服务器会返回[次数，金额]
+    '''
+    @staticmethod
+    def getMoney(eid, startTime, endTime):
+        url = "http://www.kadawo.com/fulei/index.php/equipment/hjslAjax"
+        header = FuleiHeader.FuleiHeader.postHjsl()
+        login = LoginFulei.LoginFulei()
+        header.setdefault('Cookie', 'PHPSESSID=%s' % login.getCookie())
+        post_data = "did="+eid+"&startTime="+str(startTime)+"&endTime="+str(endTime)
+        result = LoginFulei.LoginFulei.session.post(url,data=post_data,headers=header)
+        return result.text.strip('[]').split(',')
+
+    '''
+    得到某个时间段所有机器的合计金额，合计次数
+    与getMoney类似
+    '''
+    @staticmethod
+    def getAllMoney():
+        pass
+
+    '''
+    得到某个账户下所有的机器id
+    :kwargs = ["holderId","商户id"] ["dealerId","经销商id"]
+    '''
+    def getAllIdByUser(self,**kwargs):
+        #kwargs只能是一个参数,holderId或者dealerId,否则默认获取dealerId
+        url = None
+        if not kwargs == {}:
+            f = furl.furl('http://www.kadawo.com/fulei/index.php/equipment/shjList')
+            f.args = kwargs
+            f.args.setdefault('__hash__',SpiderIndex.fltool.getHash(SpiderIndex.getHtml()))
+            url = SpiderIndex.fltool.urlReplace(f.url)
+        htm = self.getHtml(url=url)
+        soup = BeautifulSoup(htm,'lxml')
+        pattern = re.compile(r'did:"([0-9]{15},).*?')
+        res = re.findall('did:"[0-9]{15},.*?',htm)
+        print(res)
+        # script = soup.findAll("script",text=pattern)
+        # print(script)
+        # print(pattern.search(script.text).group(1))
+
 
 if __name__ == '__main__':
     spiner = SpiderIndex()
-    # spiner.getHtml()
-    spiner.getAllDataByTime('2018-3-12','2018-4-1')
+    # data = spiner.getAllHolderOrDealer(False)
+    # data = spiner.getNextPage()
+    # data = spiner.getAllDataByPar(startTime='2018-3-1',endTime='2018-4-26')
+    # print(data)
+    spiner.getAllIdByUser()
