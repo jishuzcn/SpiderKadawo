@@ -150,7 +150,7 @@ class SpiderIndex(object):
                 next_url = url + '/p/' + str(i) + '/'
                 htm = self.getHtml(next_url)
                 soup = BeautifulSoup(htm, "lxml")
-                data.append(self.getIndexData(soup, startTime, endTime))  #  error!!!
+                data.append(self.getIndexData(soup, startTime, endTime))  #  error!!! ChunkedEncodingError
                 # time.sleep(1.5)  # 休眠一秒否则太快会被禁止访问
                 i = i + 1
             else:
