@@ -45,6 +45,8 @@ class FuleiTool(object):
     '''
     @staticmethod
     def urlReplace(url):
+        if not url.find('?&') == -1:
+            url = url.replace('?&','/')
         if not url.find('?') == -1:
             url = url.replace('?','/')
         if not url.find('=') == -1:
