@@ -31,6 +31,11 @@ class FuleiTool(object):
         # 转换成时间戳
         return int(time.mktime(timeArray))
 
+    @staticmethod
+    def timestampToTime(timestamp):
+        x = time.localtime(float(timestamp))
+        return time.strftime("%Y-%m-%d",x)
+
     #得到当天0点的时间戳
     @staticmethod
     def getStartTimeOfToday():
