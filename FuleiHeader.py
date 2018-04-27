@@ -124,7 +124,8 @@ class FuleiHeader(object):
         return header
 
     '''
-    GET http://www.kadawo.com/fulei/index.php/equipment/shjList/startTime/2018-04-11/endTime/2018-04-25/__hash__/1dfa2a40b599bf5393a71a3b3801115a/ HTTP/1.1
+    GET http://www.kadawo.com/fulei/index.php/equipment/shjList/startTime/2018-04-11/endTime/2018-04-25/__hash__/hash/ 
+    HTTP/1.1
     缺少Cookie值
     '''
     @staticmethod
@@ -139,5 +140,21 @@ class FuleiHeader(object):
                   'Accept-Encoding': 'gzip, deflate',
                   'Accept-Language': 'zh-CN,zh;q=0.9'
                   }
+        return header
+
+    '''
+    GET http://www.kadawo.com/fulei/index.php/equipment/signIn/did/867793034478521 HTTP/1.1
+    '''
+    @staticmethod
+    def getSingle():
+        header = {'Host': 'www.kadawo.com',
+                  'Proxy-Connection': 'keep-alive',
+                  'Upgrade-Insecure-Requests': '1',
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                                'Chrome/66.0.3359.117 Safari/537.36',
+                  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                  'Referer': 'http://www.kadawo.com/fulei/index.php/index/amTable',
+                  'Accept-Encoding': 'gzip, deflate',
+                  'Accept-Language': 'zh-CN,zh;q=0.9'}
         return header
 

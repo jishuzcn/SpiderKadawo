@@ -15,6 +15,10 @@ class FuleiTool(object):
 
     @staticmethod
     def getHash(htm):
+        """
+        :param: html文本信息
+        :return: str字符串
+        """
         hash_pattern = re.compile(r'<input type="hidden" name="__hash__" value="(.*?)"')
         _hash = re.findall(hash_pattern,htm)[0]
         return _hash

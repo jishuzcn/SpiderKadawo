@@ -9,6 +9,7 @@ __Author__ = '汪思源'
 __Vision__ = 0.1
 __Date__ = '2018.4.23'
 
+
 class LoginFulei(object):
     _url = r"http://www.kadawo.com/fulei/index.php/common/doLogin/company/"
     _loginUrl = r"http://www.kadawo.com/fulei/index.php/common/login/company/"
@@ -24,14 +25,15 @@ class LoginFulei(object):
             if os.path.exists(r"/fuleiCookie.txt"):
                 os.remove(r"/fuleiCookie.txt")
 
-    def getCookie(self):
+    @staticmethod
+    def getCookie():
         if not os.path.exists(r"/fuleiCookie.txt"):
             r = LoginFulei.session.get(url="http://www.kadawo.com/",
                       headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                                'Chrome/66.0.3359.117 Safari/537.36'})
             phpsessid = r.cookies['PHPSESSID']
             # 保存Cookie到文件
-            self.saveCookie(phpsessid)
+            LoginFulei.saveCookie(phpsessid)
         else:
             try:
                 f = open(r"/fuleiCookie.txt", 'r')
@@ -41,7 +43,8 @@ class LoginFulei(object):
                     f.close()
         return phpsessid
 
-    def saveCookie(self,fuleiCookie):
+    @staticmethod
+    def saveCookie(fuleiCookie):
         f = open(r"/fuleiCookie.txt",'w')
         f.write(fuleiCookie)
         f.close()

@@ -20,6 +20,7 @@ import furl
 import time
 import requests
 
+
 class SpiderIndex(object):
     # 唯一会话id
     login = LoginFulei.LoginFulei()
@@ -34,25 +35,25 @@ class SpiderIndex(object):
         if not SpiderIndex.login.isLogin():
             SpiderIndex.login.doLogin()
 
-    '''
-    得到某一页的Html信息
-    :param url:url链接
-    :return 一个html文本信息
-    '''
-    def getHtml(self,url = None):
+    def getHtml(self, url=None):
+        """
+        得到某一页的Html信息
+        :param url: url链接
+        :return: html文本信息
+        """
         header = SpiderIndex.flheader.getshjList()
-        header.setdefault('Cookie','PHPSESSID=%s' % SpiderIndex.login.getCookie())
+        header.setdefault('Cookie', 'PHPSESSID=%s' % SpiderIndex.login.getCookie())
         global htm
-        if url == None:
+        if url is None:
             try:
                 htm = self.session.get(r"http://www.kadawo.com/fulei/index.php/equipment/shjList", headers=header,
-                                   allow_redirects=False)
+                                       allow_redirects=False)
             except (requests.exceptions.ChunkedEncodingError, requests.ConnectionError) as e:
                 # logging.error("There is a error: %s" % e)
                 print("error")
         else:
             try:
-                htm = self.session.get(url,headers=header,allow_redirects=False)
+                htm = self.session.get(url, headers=header, allow_redirects=False)
             except (requests.exceptions.ChunkedEncodingError, requests.ConnectionError) as e:
                 # logging.error("There is a error: %s" % e)
                 print("error")
@@ -72,29 +73,31 @@ class SpiderIndex(object):
     #                     ftd.write(td.getText().encode('utf-8'))
     #                     ftd.write("\n".encode('utf-8'))
 
-    '''
-    :return 返回总页数
-    '''
-    def getTotalPage(self,htm):
+    def getTotalPage(self, htm):
+        """
+        :param htm:
+        :return: 返回总页数
+        """
         total_page_pattern = re.compile(r"1/(.*?) 页")
-        total = re.findall(total_page_pattern,htm)
+        total = re.findall(total_page_pattern, htm)
         return total[0]
 
-    '''
-     得到某一页的数据
-     序号(nid)2 设备ID(eid)3 设备名称(ename)4 设备地址(eaddress)5 持有人(holder)8
-     所属(bto)9 合计次数(ttimes) 合计金额(tmoney) 库存(stock)12 运行状态(status)13
-    :param soup:BeautifulSoup对象
-    :param startTime:开始时间,类型为TimeStamp
-    :param endTime:开始时间,类型为TimeStamp
-    :return d = [{'nid':'01','eid':'868201049..',...},{....}]
-    '''
-    def getIndexData(self,soup,startTime = None,endTime = None):
+    def getIndexData(self, htm, startTime=None, endTime=None):
+        """
+        得到某一页的数据
+        序号(nid)2 设备ID(eid)3 设备名称(ename)4 设备地址(eaddress)5 持有人(holder)8
+        所属(bto)9 合计次数(ttimes) 合计金额(tmoney) 库存(stock)12 运行状态(status)13
+        :param soup:BeautifulSoup对象
+        :param startTime:开始时间,类型为TimeStamp
+        :param endTime:开始时间,类型为TimeStamp
+        :return d = [{'nid':'01','eid':'868201049..',...},{....}]
+        """
         if not startTime:
             startTime = self.fltool.getStartTimeOfToday()
         if not endTime:
             endTime = self.fltool.getEndTimeOfToday()
         data = []
+        soup = BeautifulSoup(htm, "lxml")
         tbody = soup.find("tbody")
         rows = tbody.findAll('tr')
         for row in rows:
@@ -104,54 +107,56 @@ class SpiderIndex(object):
             # print(cols)
             # data.append([ele for ele in cols if ele])
             if len(cols) > 15:
-                da.setdefault("nid",cols[1].text.strip())
-                da.setdefault("eid",cols[2].text.strip())
-                da.setdefault("ename",cols[3].span.attrs['title'])
-                da.setdefault("eaddress",cols[4].span.attrs['title'])
-                da.setdefault("holder",cols[7].text.strip())
-                da.setdefault("bto",cols[8].text.strip())
-                ttmoney = self.getMoney(cols[2].text.strip(),startTime,endTime)
-                da.setdefault("ttimes",ttmoney[0])
-                da.setdefault("tmoney",ttmoney[1])
-                da.setdefault("stock",cols[11].text.strip())
-                da.setdefault("status",cols[12].text.strip())
+                da.setdefault("nid", cols[1].text.strip())
+                da.setdefault("eid", cols[2].text.strip())
+                da.setdefault("ename", cols[3].span.attrs['title'] if not cols[3].span.attrs['title'] == '' else '')
+                da.setdefault("eaddress", cols[4].span.attrs['title'] if not cols[4].span.attrs['title'] == '' else '')
+                da.setdefault("holder", cols[7].text.strip())
+                da.setdefault("bto", cols[8].text.strip())
+                ttmoney = self.getMoney(cols[2].text.strip(), startTime, endTime)
+                da.setdefault("ttimes", ttmoney[0])
+                da.setdefault("tmoney", ttmoney[1])
+                da.setdefault("stock", cols[11].text.strip())
+                da.setdefault("status", cols[12].text.strip())
                 data.append(da)
         return data
 
-    '''
-    按照参数获取到彩票机的所有数据
-    @parameter devicesId:设备id
-    @parameter equipmentName:设备名称
-    @parameter startTime:开始时间,类型为字符串yyyy-mm-dd格式
-    @parameter endTime:结束时间,类型为字符串yyyy-mm-dd格式
-    @parameter id:设备序号
-    @parameter network:在线状态
-    @parameter goodsState:机头状态
-    @parameter isOff:运行状态
-    @parameter holderId:商户选择
-    @parameter dealerId:经销商选择
-    @parameter __hash__ :input.hash值
-    @return 返回一个list类型数据:[{'nid': '975',...}]
-    '''
     def getAllDataByPar(self, **kwargs):
+        """
+        按照参数获取到彩票机的所有数据
+        :parameter devicesId:设备id
+        :parameter equipmentName:设备名称
+        :parameter startTime:开始时间,类型为字符串yyyy-mm-dd格式
+        :parameter endTime:结束时间,类型为字符串yyyy-mm-dd格式
+        :parameter id:设备序号
+        :parameter network:在线状态
+        :parameter goodsState:机头状态
+        :parameter isOff:运行状态
+        :parameter holderId:商户选择
+        :parameter dealerId:经销商选择
+        :parameter __hash__ :input.hash值
+        :return 返回一个list类型数据:[{'nid': '975',...}]
+        """
         f = furl.furl('http://www.kadawo.com/fulei/index.php/equipment/shjList')
         f.args = kwargs
+        print(self.getHtml())
         f.args.setdefault('__hash__', SpiderIndex.fltool.getHash(self.getHtml()))
         url = SpiderIndex.fltool.urlReplace(f.url)
         startTime = self.fltool.timeToTimestamp(kwargs['startTime'])
         endTime = self.fltool.timeToTimestamp(kwargs['endTime'])
+        print("正在爬取第1页...")
         htm = self.getHtml(url)
-        soup = BeautifulSoup(htm, "lxml")
-        data = self.getIndexData(soup, startTime, endTime)
+        data = self.getIndexData(htm, startTime, endTime)
         totalPage = int(self.getTotalPage(htm))
         i = 2
-        while(True):
+        while True:
             if i <= totalPage:
+                print("正在爬取第%d页，还剩%d页..." % (i, totalPage - i))
                 next_url = url + '/p/' + str(i) + '/'
                 htm = self.getHtml(next_url)
-                soup = BeautifulSoup(htm, "lxml")
-                data.append(self.getIndexData(soup, startTime, endTime))  #  error!!! ChunkedEncodingError
-                # time.sleep(1.5)  # 休眠一秒否则太快会被禁止访问
+                d = self.getIndexData(htm, startTime, endTime)  # error!!! ChunkedEncodingError
+                data.append(d)
+                # time.sleep(1)  # 休眠一秒否则太快会被禁止访问
                 i = i + 1
             else:
                 break
@@ -166,14 +171,14 @@ class SpiderIndex(object):
         #                          self.fltool.timeToTimestamp(kwargs['endTime']))
         # return data
 
-    '''
-    得到所有商户或者经销商,默认为商户
-    :param HolderFlag:是否是商户,默认为商户
-    :return 返回一个dict类型集合，key为商户或者经销商id，value为商户或者经销商名称
-    {'2': '2-富雷科技-北京富雷科技股份有限公司',...}
-    '''
-    def getAllHolderOrDealer(self,HolderFlag = True):
-        #这里只获取彩票机首页的html信息
+    def getAllHolderOrDealer(self, HolderFlag=True):
+        """
+        得到所有商户或者经销商,默认为商户
+        :param HolderFlag: 是否是商户,默认为商户
+        :return: 返回一个dict类型集合，key为商户或者经销商id，value为商户或者经销商名称
+        {'2': '2-富雷科技-北京富雷科技股份有限公司',...}
+        """
+        # 这里只获取彩票机首页的html信息
         htm = self.getHtml()
         soup = BeautifulSoup(htm, "lxml")
         if HolderFlag:
@@ -191,52 +196,53 @@ class SpiderIndex(object):
                     data.setdefault(o.attrs['value'], o.text)
         return data
 
-    '''
-    得到某个时间段单个机器的合计金额,合计次数
-    :param startTime,endTime:是时间戳格式
-    :return 服务器会返回[次数，金额]
-    '''
     @staticmethod
     def getMoney(eid, startTime, endTime):
+        """
+        :param eid: 设备id
+        :param startTime: 开始时间，时间戳格式
+        :param endTime: 结束时间，时间戳格式
+        :return: 服务器会返回[次数，金额]
+        """
         url = "http://www.kadawo.com/fulei/index.php/equipment/hjslAjax"
         header = FuleiHeader.FuleiHeader.postHjsl()
         login = LoginFulei.LoginFulei()
         header.setdefault('Cookie', 'PHPSESSID=%s' % login.getCookie())
-        post_data = "did="+eid+"&startTime="+str(startTime)+"&endTime="+str(endTime)
-        result = LoginFulei.LoginFulei.session.post(url,data=post_data,headers=header)
+        post_data = "did=" + eid + "&startTime=" + str(startTime) + "&endTime=" + str(endTime)
+        result = LoginFulei.LoginFulei.session.post(url, data=post_data, headers=header)
         return result.text.strip('[]').split(',')
 
-    '''
-    得到某个时间段所有机器的合计金额，合计次数
-    :param startTime:开始时间
-    :param endTime:结束时间
-    :param holderId:商户id
-    :param dealerId:经销商id
-    :return 返回一个list,list[0]:合计次数,list[1]:合计金额
-    '''
     @staticmethod
-    def getAllMoney(startTime,endTime,holderId=None,dealerId=None):
+    def getAllMoney(startTime, endTime, holderId=None, dealerId=None):
+        """
+        得到某个时间段所有机器的合计金额，合计次数
+        :param startTime:开始时间
+        :param endTime:结束时间
+        :param holderId:商户id
+        :param dealerId:经销商id
+        :return: 返回一个list,list[0]:合计次数,list[1]:合计金额
+        """
         url = "http://www.kadawo.com/fulei/index.php/equipment/zslhj"
         header = SpiderIndex.flheader.postHjsl()
         login = SpiderIndex.login
         header.setdefault('Cookie', 'PHPSESSID=%s' % login.getCookie())
-        did = SpiderIndex.getAllIdByUser(holderId=holderId,dealerId=dealerId)
+        did = SpiderIndex.getAllIdByUser(holderId=holderId, dealerId=dealerId)
         data = {
-            'did':did,
-            'startTime':startTime,
-            'endTime':endTime,
+            'did': did,
+            'startTime': startTime,
+            'endTime': endTime,
         }
-        result = SpiderIndex.session.post(url,data=data,headers=header)
+        result = SpiderIndex.session.post(url, data=data, headers=header)
         return result.text.strip('[]').split(',')
 
-    '''
-    得到某个账户下所有的机器id
-    :kwargs = ["holderId","商户id"] ["dealerId","经销商id"]
-    :return 返回一个字符串:"15位数id,15位数id,..."
-    '''
     @staticmethod
     def getAllIdByUser(**kwargs):
-        #kwargs只能是一个参数,holderId或者dealerId,否则默认获取dealerId
+        """
+        得到某个账户下所有的机器id
+        :param kwargs: ["holderId","商户id"] ["dealerId","经销商id"]
+        :return: 返回一个字符串:"15位数id,15位数id,..."
+        """
+        # kwargs只能是一个参数,holderId或者dealerId,否则默认获取dealerId
         url = None
         spider = SpiderIndex()
         if not kwargs == {}:
@@ -244,19 +250,18 @@ class SpiderIndex(object):
                 kwargs = kwargs['dealerId']
             f = furl.furl('http://www.kadawo.com/fulei/index.php/equipment/shjList')
             f.args = kwargs
-            f.args.setdefault('__hash__',SpiderIndex.fltool.getHash(spider.getHtml()))
+            f.args.setdefault('__hash__', SpiderIndex.fltool.getHash(spider.getHtml()))
             url = SpiderIndex.fltool.urlReplace(f.url)
         htm = spider.getHtml(url=url)
         pattern = re.compile(r'did:"([0-9]{15}.*)')
-        res = re.findall(pattern,htm)
+        res = re.findall(pattern, htm)
         return res[0].rstrip('",')
 
-
-if __name__ == '__main__':
-    spiner = SpiderIndex()
-    fltool = FuleiTool.FuleiTool()
-    # data = spiner.getAllHolderOrDealer(False)
-    # data = spiner.getTotalPage(spiner.getHtml())
-    data = spiner.getAllDataByPar(startTime='2018-3-1',endTime='2018-4-26')
-    # data = spiner.getAllMoney(str(fltool.getStartTimeOfToday()),str(fltool.getEndTimeOfToday()),dealerId='2')
-    print(data)
+# if __name__ == '__main__':
+#     spiner = SpiderIndex()
+# #     fltool = FuleiTool.FuleiTool()
+# #     data = spiner.getAllHolderOrDealer(False)
+# #     data = spiner.getTotalPage(spiner.getHtml())
+#     data = spiner.getAllDataByPar(startTime='2018-3-1', endTime='2018-4-26')
+# #     data = spiner.getAllMoney(str(fltool.getStartTimeOfToday()),str(fltool.getEndTimeOfToday()),dealerId='2')
+#     print(data)
