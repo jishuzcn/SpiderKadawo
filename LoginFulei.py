@@ -53,8 +53,8 @@ class LoginFulei(object):
     POST http://www.kadawo.com/fulei/index.php/common/doLogin/company/ HTTP/1.1
     '''
     def doLogin(self):
-        username = 'fulei'
-        password = 'bdxl88888*'
+        username = ''
+        password = ''
         header = LoginFulei.flheader.getLogin()
         header.setdefault('Cookie', 'PHPSESSID=%s' % self.getCookie())
         response = LoginFulei.session.get(url=self._loginUrl, headers=header)
